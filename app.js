@@ -90,7 +90,6 @@
 
   const EXAMPLE = {
     name: "",
-    date: "",
     values: {
       strength: [6, 8], engine: [5, 8], gymnastics: [4, 7], weightlifting: [6, 8],
       skills: [5, 8], mobility: [4, 7], consistency: [7, 8], mindset: [6, 8],
@@ -527,7 +526,6 @@
   const $ = (id) => document.getElementById(id);
   const canvas = $("radar");
   const nameInput = $("athleteName");
-  const dateInput = $("athleteDate");
   const body = $("scoresBody");
   const profileSelect = $("profileSelect");
   const statusEl = $("status");
@@ -585,12 +583,11 @@
     DIMENSIONS.forEach((d) => {
       values[d.key] = inputs[d.key].map(parseValue);
     });
-    return { name: nameInput.value, date: dateInput.value, values };
+    return { name: nameInput.value, date: today(), values };
   }
 
   function writeForm(data) {
     nameInput.value = data.name || "";
-    dateInput.value = data.date || "";
     DIMENSIONS.forEach((d) => {
       const vals = data.values?.[d.key] || [null, null];
       inputs[d.key].forEach((inp, i) => {
@@ -662,7 +659,7 @@
       .forEach(([id, p]) => {
         const opt = document.createElement("option");
         opt.value = id;
-        opt.textContent = p.date ? `${p.name} (${formatDate(p.date)})` : p.name;
+        opt.textContent = p.updatedAt ? `${p.name} (${new Date(p.updatedAt).toLocaleDateString("es-ES")})` : p.name;
         profileSelect.append(opt);
       });
     profileSelect.value = profiles[selectedId] ? selectedId : "";
@@ -677,10 +674,11 @@
     let id = profileSelect.value;
     if (!id || profiles[id]?.name !== data.name.trim()) {
       // Reutiliza un perfil con el mismo nombre y fecha, o crea uno nuevo.
-      id = Object.keys(profiles).find((k) => profiles[k].name === data.name.trim() && profiles[k].date === data.date)
+      id = Object.keys(profiles).find((k) => profiles[k].name === data.name.trim())
         || `p_${Date.now()}`;
     }
-    profiles[id] = { ...sanitized(data), name: data.name.trim(), updatedAt: new Date().toISOString() };
+    const { date, ...rest } = sanitized(data);
+    profiles[id] = { ...rest, name: data.name.trim(), updatedAt: new Date().toISOString() };
     saveProfiles(profiles);
     renderProfileOptions(id);
     onChange();
@@ -829,21 +827,20 @@
     let draft = null;
     try { draft = JSON.parse(localStorage.getItem(STORAGE_DRAFT)); } catch { /* ignore */ }
     renderProfileOptions(draft?.profileId || "");
-    writeForm(draft || { ...EXAMPLE, date: today() });
+    writeForm(draft || EXAMPLE);
 
     nameInput.addEventListener("input", onChange);
-    dateInput.addEventListener("input", onChange);
     profileSelect.addEventListener("change", selectProfile);
     $("saveBtn").addEventListener("click", saveProfile);
     $("deleteBtn").addEventListener("click", deleteProfile);
     downloadBtn.addEventListener("click", download);
     $("exampleBtn").addEventListener("click", () => {
-      writeForm({ ...EXAMPLE, name: nameInput.value, date: dateInput.value || today() });
+      writeForm({ ...EXAMPLE, name: nameInput.value });
       onChange();
     });
     $("clearBtn").addEventListener("click", () => {
       profileSelect.value = "";
-      writeForm({ name: "", date: today(), values: {} });
+      writeForm({ name: "", values: {} });
       onChange();
     });
 

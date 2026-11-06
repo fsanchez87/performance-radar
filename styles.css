@@ -93,7 +93,7 @@ input:focus, select:focus { outline: 2px solid var(--blue); outline-offset: -1px
 .row { display: flex; gap: 8px; }
 .row select { flex: 1; }
 
-.fields { display: grid; grid-template-columns: 1fr 150px; gap: 10px; margin-bottom: 16px; }
+.fields { margin-bottom: 16px; }
 
 .scores { width: calc(100% - 36px); border-collapse: collapse; }
 .scores th {
@@ -146,10 +146,6 @@ input:focus, select:focus { outline: 2px solid var(--blue); outline-offset: -1px
   .layout { grid-template-columns: 1fr; padding: 16px; }
   .preview-panel { position: static; }
   .topbar h1 { font-size: 18px; }
-}
-
-@media (max-width: 600px) {
-  .fields { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 400px) {
