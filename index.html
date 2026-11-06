@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Athlete Performance Radar · One Mile ATHLETE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Roboto+Condensed:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-name">ONE MILE</span>
+      <span class="brand-sub">ATHLETE</span>
+    </div>
+    <h1>Athlete Performance Radar</h1>
+  </header>
+
+  <main class="layout">
+    <section class="panel form-panel">
+      <h2 class="panel-title blue">Datos del atleta</h2>
+
+      <div class="profiles">
+        <label for="profileSelect">Perfiles guardados</label>
+        <div class="row">
+          <select id="profileSelect">
+            <option value="">— Nuevo perfil —</option>
+          </select>
+          <button type="button" id="deleteBtn" class="btn ghost" title="Eliminar perfil seleccionado">Eliminar</button>
+        </div>
+      </div>
+
+      <div class="fields">
+        <div class="field">
+          <label for="athleteName">Nombre del atleta</label>
+          <input id="athleteName" type="text" placeholder="Ej. Laura García" maxlength="40" />
+        </div>
+        <div class="field">
+          <label for="athleteDate">Fecha</label>
+          <input id="athleteDate" type="date" />
+        </div>
+      </div>
+
+      <table class="scores">
+        <thead>
+          <tr>
+            <th>Dimensión</th>
+            <th class="c-current">Nivel actual</th>
+            <th class="c-target">Nivel objetivo</th>
+          </tr>
+        </thead>
+        <tbody id="scoresBody"></tbody>
+      </table>
+      <p class="hint">Puntuaciones de 0 a 10 (admite medios puntos). El objetivo es para las próximas 8-12 semanas.</p>
+
+      <p id="status" class="status" role="status"></p>
+
+      <div class="actions">
+        <button type="button" id="saveBtn" class="btn primary">Guardar perfil</button>
+        <button type="button" id="downloadBtn" class="btn red">Descargar imagen</button>
+      </div>
+      <div class="actions secondary">
+        <button type="button" id="exampleBtn" class="btn ghost">Cargar ejemplo</button>
+        <button type="button" id="clearBtn" class="btn ghost">Limpiar</button>
+      </div>
+    </section>
+
+    <section class="panel preview-panel">
+      <h2 class="panel-title dark">Vista previa</h2>
+      <div class="canvas-wrap">
+        <canvas id="radar" aria-label="Gráfico radar de rendimiento del atleta"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
