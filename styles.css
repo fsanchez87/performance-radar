@@ -151,3 +151,92 @@ input:focus, select:focus { outline: 2px solid var(--blue); outline-offset: -1px
 @media (max-width: 600px) {
   .fields { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 400px) {
+  .form-panel > *:not(.panel-title) { margin-left: 12px; margin-right: 12px; }
+  .scores { width: calc(100% - 24px); }
+  .scores .dim { gap: 6px; font-size: 15px; }
+  .scores input { width: 54px; padding: 6px 2px; }
+}
+
+/* Información de cada dimensión */
+.info-btn {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0;
+  border: 1.5px solid #9aa1a9;
+  border-radius: 50%;
+  background: #fff;
+  color: #5b6168;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.info-btn:hover, .info-btn[aria-expanded="true"] { border-color: var(--blue); color: #fff; background: var(--blue); }
+.info-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.dim-tooltip {
+  --accent: var(--blue);
+  --arrow-x: 24px;
+  position: fixed;
+  z-index: 100;
+  width: min(320px, calc(100vw - 16px));
+  padding: 12px 14px;
+  background: var(--black);
+  color: #fff;
+  border-top: 4px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.dim-tooltip strong {
+  display: block;
+  margin-bottom: 4px;
+  font-family: Oswald, sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: #fff;
+}
+.dim-tooltip p { margin: 6px 0 0; color: #dfe2e6; }
+.dim-tooltip::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: calc(var(--arrow-x) - 6px);
+  border: 6px solid transparent;
+  border-bottom-color: var(--accent);
+}
+.dim-tooltip.above { border-top: 0; border-bottom: 4px solid var(--accent); }
+.dim-tooltip.above::before { top: auto; bottom: -16px; border-bottom-color: transparent; border-top-color: var(--accent); }
+
+/* Guía de la escala */
+.scale-guide {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: #eef0f3;
+  border-left: 4px solid var(--blue);
+  border-radius: 6px;
+  font-size: 14px;
+}
+.scale-guide p { margin: 0 0 6px; font-weight: 700; }
+.scale-guide ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.scale-guide li { display: flex; align-items: baseline; gap: 8px; }
+.scale-num {
+  flex: none;
+  min-width: 26px;
+  padding: 1px 0;
+  border-radius: 4px;
+  background: var(--dark);
+  color: #fff;
+  font-family: Oswald, sans-serif;
+  font-weight: 600;
+  text-align: center;
+}

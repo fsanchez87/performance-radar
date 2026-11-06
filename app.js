@@ -49,6 +49,45 @@
       label: { ix: 430, iy: 233, tx: 382, ty: 228, align: "right" } },
   ];
 
+  // Preguntas guía que se muestran en el tooltip de cada dimensión.
+  const HELP = {
+    strength: {
+      title: "Strength — Fuerza",
+      text: ["¿Cómo valoras tu fuerza máxima y relativa? ¿Te sientes fuerte en los movimientos de empuje, tracción y levantamientos pesados? ¿Qué ocurre cuando aumenta la carga?"],
+    },
+    engine: {
+      title: "Engine — Resistencia cardiovascular",
+      text: [
+        "¿Cómo gestionas los esfuerzos prolongados? ¿Eres capaz de mantener un ritmo constante o te fatigas demasiado pronto? ¿Cómo recuperas entre esfuerzos?",
+        "¿Cómo gestionas los esfuerzos de alta intensidad? ¿Eres capaz de mantener el rendimiento cuando aumenta la exigencia o pierdes mucha capacidad después de los primeros minutos?",
+      ],
+    },
+    gymnastics: {
+      title: "Gymnastics — Gimnásticos",
+      text: ["¿Cómo controlas tu cuerpo y tu peso corporal? Valora tu capacidad en movimientos estrictos, posiciones invertidas y ejercicios que requieren fuerza y control corporal."],
+    },
+    weightlifting: {
+      title: "Weightlifting — Halterofilia",
+      text: ["¿Cómo valoras tu técnica y eficiencia con la barra? ¿Te sientes seguro en el Snatch, Clean & Jerk y sus variantes? ¿Puedes mantener una buena ejecución cuando aumenta el peso?"],
+    },
+    skills: {
+      title: "Skills — Habilidades",
+      text: ["Valora tu dominio de habilidades específicas del CrossFit: Double Unders, Handstand Push-Ups, Muscle-Ups, Handstand Walk y otros movimientos que formen parte de tu entrenamiento."],
+    },
+    mobility: {
+      title: "Mobility — Movilidad",
+      text: ["¿Cómo es tu rango de movimiento? ¿Puedes alcanzar y mantener las posiciones necesarias para ejecutar correctamente los ejercicios? ¿Hay limitaciones que condicionan tus movimientos?"],
+    },
+    consistency: {
+      title: "Consistency — Consistencia",
+      text: ["¿Cómo valoras tu regularidad y adherencia al entrenamiento? ¿Cumples con tu programación? ¿Registras tus resultados? ¿Eres constante incluso cuando la motivación no acompaña?"],
+    },
+    mindset: {
+      title: "Mindset — Mentalidad",
+      text: ["¿Cómo gestionas el esfuerzo, la frustración y los momentos difíciles? ¿Sabes mantener la concentración cuando estás cansado? ¿Eres capaz de seguir una estrategia sin dejarte llevar por la presión?"],
+    },
+  };
+
   const EXAMPLE = {
     name: "",
     date: "",
@@ -507,7 +546,14 @@
       const ictx = ic.getContext("2d");
       ictx.scale(2, 2);
       drawIcon(ictx, d.icon, 11, 11, 22, d.color);
-      wrap.append(ic, document.createTextNode(d.name));
+      const info = document.createElement("button");
+      info.type = "button";
+      info.className = "info-btn";
+      info.textContent = "i";
+      info.setAttribute("aria-label", `Información sobre ${d.name}`);
+      info.setAttribute("aria-describedby", "dimTooltip");
+      info.dataset.key = d.key;
+      wrap.append(ic, document.createTextNode(d.name), info);
       tdName.append(wrap);
       tr.append(tdName);
 
@@ -515,7 +561,7 @@
         const td = document.createElement("td");
         const inp = document.createElement("input");
         inp.type = "number";
-        inp.min = "0"; inp.max = "10"; inp.step = "0.5";
+        inp.min = "1"; inp.max = "10"; inp.step = "0.5";
         inp.inputMode = "decimal";
         inp.className = kind;
         inp.setAttribute("aria-label", `${d.name} — nivel ${kind === "current" ? "actual" : "objetivo"}`);
@@ -559,7 +605,7 @@
     DIMENSIONS.forEach((d) => {
       inputs[d.key].forEach((inp, i) => {
         const v = data.values[d.key][i];
-        const bad = v !== null && (Number.isNaN(v) || v < 0 || v > 10);
+        const bad = v !== null && (Number.isNaN(v) || v < 1 || v > 10);
         inp.classList.toggle("invalid", bad);
         if (bad) valid = false;
         if (v === null) complete = false;
@@ -573,7 +619,7 @@
     const values = {};
     DIMENSIONS.forEach((d) => {
       values[d.key] = data.values[d.key].map((v) =>
-        v === null || Number.isNaN(v) ? null : Math.max(0, Math.min(10, v))
+        v === null || Number.isNaN(v) ? null : Math.max(1, Math.min(10, v))
       );
     });
     return { ...data, values };
@@ -589,7 +635,7 @@
     const v = validate(data);
     render(canvas, sanitized(data), 1);
     downloadBtn.disabled = !v.ready;
-    if (!v.valid) setStatus("Hay valores fuera de rango (0-10).", "err");
+    if (!v.valid) setStatus("Hay valores fuera de rango (1-10).", "err");
     else if (!v.hasName) setStatus("Introduce el nombre del atleta para poder descargar.", "");
     else if (!v.complete) setStatus("Completa todas las puntuaciones para poder descargar.", "");
     else setStatus("Listo para descargar.", "ok");
@@ -684,6 +730,93 @@
     }, "image/png");
   }
 
+  // ---------- Tooltip de dimensiones ----------
+  const tooltip = document.createElement("div");
+  tooltip.id = "dimTooltip";
+  tooltip.className = "dim-tooltip";
+  tooltip.setAttribute("role", "tooltip");
+  tooltip.hidden = true;
+  document.body.append(tooltip);
+  let tipOwner = null;
+  let tipPinned = false;
+
+  function showTip(btn, pinned) {
+    const d = DIMENSIONS.find((x) => x.key === btn.dataset.key);
+    const h = HELP[d.key];
+    tooltip.style.setProperty("--accent", d.color);
+    tooltip.innerHTML = "";
+    const t = document.createElement("strong");
+    t.textContent = h.title;
+    tooltip.append(t);
+    h.text.forEach((p) => {
+      const el = document.createElement("p");
+      el.textContent = p;
+      tooltip.append(el);
+    });
+    tooltip.hidden = false;
+    tipOwner?.setAttribute("aria-expanded", "false");
+    tipOwner = btn;
+    tipPinned = pinned;
+    btn.setAttribute("aria-expanded", "true");
+    positionTip();
+  }
+
+  function hideTip() {
+    tooltip.hidden = true;
+    tipOwner?.setAttribute("aria-expanded", "false");
+    tipOwner = null;
+    tipPinned = false;
+  }
+
+  function positionTip() {
+    if (!tipOwner) return;
+    const r = tipOwner.getBoundingClientRect();
+    const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+    const m = 8;
+    let left = r.left + r.width / 2 - 24;
+    left = Math.max(m, Math.min(left, window.innerWidth - tw - m));
+    let top = r.bottom + 10;
+    let below = true;
+    if (top + th > window.innerHeight - m && r.top - th - 10 > m) { top = r.top - th - 10; below = false; }
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+    tooltip.classList.toggle("above", !below);
+    tooltip.style.setProperty("--arrow-x", `${r.left + r.width / 2 - left}px`);
+  }
+
+  function bindTooltips() {
+    body.addEventListener("click", (e) => {
+      const btn = e.target.closest(".info-btn");
+      if (!btn) return;
+      e.stopPropagation();
+      if (tipOwner === btn && tipPinned) hideTip();
+      else showTip(btn, true);
+    });
+    body.addEventListener("mouseover", (e) => {
+      const btn = e.target.closest(".info-btn");
+      if (btn && !tipPinned) showTip(btn, false);
+    });
+    body.addEventListener("mouseout", (e) => {
+      const btn = e.target.closest(".info-btn");
+      if (btn && !tipPinned && tipOwner === btn) hideTip();
+    });
+    body.addEventListener("focusin", (e) => {
+      const btn = e.target.closest(".info-btn");
+      if (btn && !tipPinned) showTip(btn, false);
+    });
+    body.addEventListener("focusout", (e) => {
+      if (e.target.closest(".info-btn") && !tipPinned) hideTip();
+    });
+    document.addEventListener("click", (e) => {
+      if (tipOwner && !tooltip.contains(e.target)) hideTip();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && tipOwner) { const b = tipOwner; hideTip(); b.focus(); }
+    });
+    window.addEventListener("resize", positionTip);
+    window.addEventListener("scroll", positionTip, true);
+  }
+
   // ---------- Init ----------
   function today() {
     const d = new Date();
@@ -692,6 +825,7 @@
 
   function init() {
     buildForm();
+    bindTooltips();
     let draft = null;
     try { draft = JSON.parse(localStorage.getItem(STORAGE_DRAFT)); } catch { /* ignore */ }
     renderProfileOptions(draft?.profileId || "");
