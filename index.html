@@ -19,6 +19,7 @@
   </header>
 
   <main class="layout">
+    <div class="left-col">
     <section class="panel form-panel">
       <h2 class="panel-title blue">Datos del atleta</h2>
 
@@ -66,11 +67,22 @@
         <button type="button" id="saveBtn" class="btn primary">Guardar perfil</button>
         <button type="button" id="downloadBtn" class="btn red">Descargar imagen</button>
       </div>
+      <div class="actions">
+        <button type="button" id="reportBtn" class="btn dark">Descargar informe completo (PDF)</button>
+      </div>
       <div class="actions secondary">
         <button type="button" id="exampleBtn" class="btn ghost">Cargar ejemplo</button>
         <button type="button" id="clearBtn" class="btn ghost">Limpiar</button>
       </div>
     </section>
+
+    <section class="panel questions-panel" id="questionsPanel">
+      <h2 class="panel-title blue">Cuestionario</h2>
+      <p class="q-intro">Responde a las preguntas de cada dimensión. Tus respuestas se incluyen en la segunda página del informe PDF.</p>
+      <p id="qProgress" class="q-progress"></p>
+      <div id="questionsBody"></div>
+    </section>
+    </div>
 
     <section class="panel preview-panel">
       <h2 class="panel-title dark">Vista previa</h2>

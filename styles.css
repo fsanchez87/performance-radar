@@ -236,3 +236,76 @@ input:focus, select:focus { outline: 2px solid var(--blue); outline-offset: -1px
   font-weight: 600;
   text-align: center;
 }
+
+/* Columna izquierda: datos + cuestionario */
+.left-col { display: grid; gap: 24px; min-width: 0; }
+.btn.dark { background: var(--black); color: #fff; }
+
+/* Cuestionario */
+.questions-panel { padding-bottom: 18px; }
+.questions-panel > *:not(.panel-title) { margin-left: 18px; margin-right: 18px; }
+.q-intro { margin-top: 0; font-size: 14px; color: #6b7178; }
+.q-progress {
+  display: inline-block;
+  margin: 0 18px 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef0f3;
+  font-family: Oswald, sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.q-progress.complete { background: #e3f4ea; color: #1f8a4c; }
+
+.q-block {
+  --accent: var(--blue);
+  margin: 0 0 14px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+}
+.q-block legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  font-family: Oswald, sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.q-block legend canvas { width: 22px; height: 22px; }
+.q-text {
+  display: block;
+  margin: 6px 0 6px;
+  font-family: inherit;
+  font-weight: 400;
+  font-size: 14px;
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #5b6168;
+  line-height: 1.4;
+}
+.q-block textarea {
+  display: block;
+  width: 100%;
+  min-height: 70px;
+  padding: 8px 10px;
+  border: 1px solid #cfd4da;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 15px;
+  resize: vertical;
+}
+.q-block textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.q-block textarea.missing { border-color: var(--red); background: #fff6f6; }
+
+@media (max-width: 400px) {
+  .questions-panel > *:not(.panel-title) { margin-left: 12px; margin-right: 12px; }
+  .q-progress { margin-left: 12px; }
+}

@@ -288,7 +288,7 @@
     drawInterpretation(c);
   }
 
-  function drawHeader(c, data) {
+  function drawHeader(c, data, title = "ATHLETE PERFORMANCE RADAR") {
     // Logo
     text(c, "ONE MILE", 228, 50, { font: `700 68px ${FONT_HEAD}`, color: COLORS.black, align: "center", spacing: 1 });
     text(c, "ATHLETE", 228, 87, { font: `600 18px ${FONT_HEAD}`, color: COLORS.black, align: "center", spacing: 9 });
@@ -301,7 +301,7 @@
 
     // Bloque de título
     roundRect(c, 448, 8, 822, 86, 4, COLORS.black);
-    text(c, "ATHLETE PERFORMANCE RADAR", 859, 38, { font: `700 46px ${FONT_HEAD}`, color: "#fff", align: "center", spacing: 1.5 });
+    text(c, title, 859, 38, { font: `700 46px ${FONT_HEAD}`, color: "#fff", align: "center", spacing: 1.5 });
 
     const parts = [];
     if (data.name.trim()) parts.push(data.name.trim().toUpperCase());
@@ -530,8 +530,21 @@
   const profileSelect = $("profileSelect");
   const statusEl = $("status");
   const downloadBtn = $("downloadBtn");
+  const reportBtn = $("reportBtn");
+  const questionsBody = $("questionsBody");
+  const qProgress = $("qProgress");
 
   const inputs = {}; // key -> [currentInput, targetInput]
+  const answerInputs = {}; // key -> [textarea por pregunta]
+
+  function iconCanvas(d, size) {
+    const ic = document.createElement("canvas");
+    ic.width = size * 2; ic.height = size * 2;
+    const ictx = ic.getContext("2d");
+    ictx.scale(2, 2);
+    drawIcon(ictx, d.icon, size / 2, size / 2, size, d.color);
+    return ic;
+  }
 
   function buildForm() {
     DIMENSIONS.forEach((d) => {
@@ -539,11 +552,7 @@
       const tdName = document.createElement("td");
       const wrap = document.createElement("div");
       wrap.className = "dim";
-      const ic = document.createElement("canvas");
-      ic.width = 44; ic.height = 44;
-      const ictx = ic.getContext("2d");
-      ictx.scale(2, 2);
-      drawIcon(ictx, d.icon, 11, 11, 22, d.color);
+      const ic = iconCanvas(d, 22);
       const info = document.createElement("button");
       info.type = "button";
       info.className = "info-btn";
@@ -583,7 +592,11 @@
     DIMENSIONS.forEach((d) => {
       values[d.key] = inputs[d.key].map(parseValue);
     });
-    return { name: nameInput.value, date: today(), values };
+    const answers = {};
+    DIMENSIONS.forEach((d) => {
+      answers[d.key] = answerInputs[d.key].map((t) => t.value);
+    });
+    return { name: nameInput.value, date: today(), values, answers };
   }
 
   function writeForm(data) {
@@ -592,6 +605,10 @@
       const vals = data.values?.[d.key] || [null, null];
       inputs[d.key].forEach((inp, i) => {
         inp.value = vals[i] === null || vals[i] === undefined ? "" : vals[i];
+      });
+      answerInputs[d.key].forEach((t, i) => {
+        t.value = data.answers?.[d.key]?.[i] || "";
+        t.classList.remove("missing");
       });
     });
   }
@@ -632,6 +649,8 @@
     const v = validate(data);
     render(canvas, sanitized(data), 1);
     downloadBtn.disabled = !v.ready;
+    reportBtn.disabled = !v.ready;
+    updateProgress();
     if (!v.valid) setStatus("Hay valores fuera de rango (1-10).", "err");
     else if (!v.hasName) setStatus("Introduce el nombre del atleta para poder descargar.", "");
     else if (!v.complete) setStatus("Completa todas las puntuaciones para poder descargar.", "");
@@ -713,19 +732,286 @@
     if (!validate(data).ready) { refresh(); return; }
     const out = document.createElement("canvas");
     render(out, sanitized(data), EXPORT_SCALE);
-    const slug = data.name.trim().toLowerCase()
+    out.toBlob((blob) => {
+      saveBlob(blob, `performance-radar-${slugify(data.name)}-${data.date}.png`);
+    }, "image/png");
+  }
+
+  function slugify(name) {
+    return name.trim().toLowerCase()
       .normalize("NFD").replace(/[̀-ͯ]/g, "")
       .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "atleta";
-    out.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `performance-radar-${slug}${data.date ? "-" + data.date : ""}.png`;
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }, "image/png");
+  }
+
+  function saveBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // ---------- Cuestionario ----------
+  function buildQuestions() {
+    DIMENSIONS.forEach((d) => {
+      const h = HELP[d.key];
+      const block = document.createElement("fieldset");
+      block.className = "q-block";
+      block.style.setProperty("--accent", d.color);
+      const legend = document.createElement("legend");
+      const title = document.createElement("span");
+      title.textContent = h.title;
+      legend.append(iconCanvas(d, 22), title);
+      block.append(legend);
+
+      answerInputs[d.key] = h.text.map((q, i) => {
+        const id = `q_${d.key}_${i}`;
+        const label = document.createElement("label");
+        label.className = "q-text";
+        label.htmlFor = id;
+        label.textContent = q;
+        const ta = document.createElement("textarea");
+        ta.id = id;
+        ta.rows = 3;
+        ta.maxLength = 800;
+        ta.placeholder = "Escribe tu respuesta…";
+        ta.addEventListener("input", () => {
+          if (ta.value.trim()) ta.classList.remove("missing");
+          onChange();
+        });
+        block.append(label, ta);
+        return ta;
+      });
+      questionsBody.append(block);
+    });
+  }
+
+  function allAnswerInputs() {
+    return DIMENSIONS.flatMap((d) => answerInputs[d.key]);
+  }
+
+  function updateProgress() {
+    const all = allAnswerInputs();
+    const done = all.filter((t) => t.value.trim()).length;
+    qProgress.textContent = `${done} de ${all.length} preguntas respondidas`;
+    qProgress.classList.toggle("complete", done === all.length);
+  }
+
+  function missingDimensions() {
+    return DIMENSIONS.filter((d) => answerInputs[d.key].some((t) => !t.value.trim()));
+  }
+
+  // ---------- Informe PDF ----------
+  const PAGE_H = Math.round(W * Math.SQRT2); // proporción A4
+  const Q = { margin: 100, top: 165, bottom: PAGE_H - 115, textX: 150, right: W - 100 };
+
+  function wrapLines(c, str, maxW) {
+    const out = [];
+    str.split(/\n/).forEach((par) => {
+      const words = par.split(/\s+/).filter(Boolean);
+      if (!words.length) return;
+      let line = "";
+      words.forEach((w) => {
+        const t = line ? `${line} ${w}` : w;
+        if (line && c.measureText(t).width > maxW) { out.push(line); line = w; }
+        else line = t;
+      });
+      out.push(line);
+    });
+    return out;
+  }
+
+  const qFonts = (s) => ({
+    title: `700 ${24 * s}px ${FONT_HEAD}`,
+    question: `italic 400 ${16.5 * s}px ${FONT_BODY}`,
+    answer: `400 ${19 * s}px ${FONT_BODY}`,
+    qLine: 21 * s,
+    aLine: 25 * s,
+  });
+
+  function layoutAnswers(c, data, s) {
+    const f = qFonts(s);
+    const maxW = Q.right - Q.textX;
+    return DIMENSIONS.map((d) => {
+      const items = HELP[d.key].text.map((q, i) => {
+        c.font = f.question;
+        const ql = wrapLines(c, q, maxW);
+        const ans = (data.answers?.[d.key]?.[i] || "").trim();
+        c.font = f.answer;
+        const al = ans ? wrapLines(c, ans, maxW - 18) : ["Sin respuesta"];
+        return { ql, al, empty: !ans };
+      });
+      let h = 42 * s;
+      items.forEach((it) => { h += it.ql.length * f.qLine + 8 * s + it.al.length * f.aLine + 12 * s; });
+      h += 30 * s;
+      return { d, items, h };
+    });
+  }
+
+  // Busca el mayor tamaño de letra con el que todo cabe en una página; si no cabe ni al mínimo, pagina.
+  function paginateAnswers(data) {
+    const c = document.createElement("canvas").getContext("2d");
+    const avail = Q.bottom - Q.top;
+    let s = 1;
+    let blocks;
+    for (; s >= 0.7; s -= 0.05) {
+      blocks = layoutAnswers(c, data, s);
+      if (blocks.reduce((a, b) => a + b.h, 0) <= avail) return { s, pages: [blocks] };
+    }
+    s = 0.7;
+    blocks = layoutAnswers(c, data, s);
+    const pages = [];
+    let cur = [], used = 0;
+    blocks.forEach((b) => {
+      if (cur.length && used + b.h > avail) { pages.push(cur); cur = []; used = 0; }
+      cur.push(b); used += b.h;
+    });
+    if (cur.length) pages.push(cur);
+    return { s, pages };
+  }
+
+  function renderAnswersPage(canvas, data, blocks, s, pageNo, pageCount, scale) {
+    canvas.width = W * scale;
+    canvas.height = PAGE_H * scale;
+    const c = canvas.getContext("2d");
+    c.setTransform(scale, 0, 0, scale, 0, 0);
+    c.fillStyle = "#fff";
+    c.fillRect(0, 0, W, PAGE_H);
+    drawHeader(c, data, "CUESTIONARIO DEL ATLETA");
+
+    const f = qFonts(s);
+    let y = Q.top;
+    blocks.forEach((b, bi) => {
+      const { d } = b;
+      iconBadge(c, d, Q.margin + 8, y + 18 * s, 22 * s);
+      text(c, HELP[d.key].title.toUpperCase(), Q.textX, y + 18 * s, { font: f.title, color: COLORS.black });
+      y += 42 * s;
+      b.items.forEach((it) => {
+        it.ql.forEach((ln) => {
+          text(c, ln, Q.textX, y, { font: f.question, color: "#6b7178", baseline: "top" });
+          y += f.qLine;
+        });
+        y += 8 * s;
+        const ah = it.al.length * f.aLine;
+        c.fillStyle = it.empty ? "#c9cdd2" : d.color;
+        c.fillRect(Q.textX, y - 2 * s, 4 * s, ah);
+        it.al.forEach((ln) => {
+          text(c, ln, Q.textX + 18, y, {
+            font: it.empty ? `italic ${f.answer}` : f.answer,
+            color: it.empty ? "#9aa0a6" : COLORS.text,
+            baseline: "top",
+          });
+          y += f.aLine;
+        });
+        y += 12 * s;
+      });
+      if (bi < blocks.length - 1) {
+        c.strokeStyle = "#e3e6ea";
+        c.lineWidth = 1;
+        c.beginPath(); c.moveTo(Q.margin - 20, y + 12 * s); c.lineTo(W - Q.margin + 20, y + 12 * s); c.stroke();
+      }
+      y += 30 * s;
+    });
+
+    // Pie de página
+    c.strokeStyle = COLORS.gold;
+    c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(Q.margin - 20, PAGE_H - 75); c.lineTo(W - Q.margin + 20, PAGE_H - 75); c.stroke();
+    text(c, "ONE MILE · ATHLETE PERFORMANCE RADAR", Q.margin - 20, PAGE_H - 50, { font: `600 16px ${FONT_HEAD}`, color: COLORS.muted, spacing: 2 });
+    text(c, `Página ${pageNo} de ${pageCount}`, W - Q.margin + 20, PAGE_H - 50, { font: `400 16px ${FONT_BODY}`, color: COLORS.muted, align: "right" });
+  }
+
+  function canvasToJpeg(canvas) {
+    const b64 = canvas.toDataURL("image/jpeg", 0.92).split(",")[1];
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  // Texto PDF en UTF-16BE para admitir tildes en los metadatos.
+  function pdfText(str) {
+    let hex = "FEFF";
+    for (let i = 0; i < str.length; i++) hex += str.charCodeAt(i).toString(16).padStart(4, "0");
+    return `<${hex}>`;
+  }
+
+  // Genera un PDF A4 mínimo con una imagen JPEG por página (sin dependencias).
+  function buildPdf(pages, title) {
+    const PW = 595.28, PH = 841.89;
+    const enc = new TextEncoder();
+    const chunks = [];
+    const offsets = [];
+    let len = 0;
+    const push = (d) => { const b = typeof d === "string" ? enc.encode(d) : d; chunks.push(b); len += b.length; };
+    const obj = (num, body) => { offsets[num] = len; push(`${num} 0 obj\n`); body(); push("\nendobj\n"); };
+    const n = pages.length;
+    const total = 3 + 3 * n;
+
+    push("%PDF-1.4\n%âãÏÓ\n");
+    obj(1, () => push("<< /Type /Catalog /Pages 2 0 R >>"));
+    obj(2, () => push(`<< /Type /Pages /Count ${n} /Kids [${pages.map((_, i) => `${4 + 3 * i} 0 R`).join(" ")}] >>`));
+    obj(3, () => push(`<< /Title ${pdfText(title)} /Producer (Athlete Performance Radar) >>`));
+    pages.forEach((p, i) => {
+      const [x, y, w, h] = p.place.map((v) => v.toFixed(2));
+      const content = `q ${w} 0 0 ${h} ${x} ${y} cm /Im0 Do Q`;
+      obj(4 + 3 * i, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 ${6 + 3 * i} 0 R >> >> /Contents ${5 + 3 * i} 0 R >>`));
+      obj(5 + 3 * i, () => push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
+      obj(6 + 3 * i, () => {
+        push(`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.jpeg.length} >>\nstream\n`);
+        push(p.jpeg);
+        push("\nendstream");
+      });
+    });
+    const xref = len;
+    push(`xref\n0 ${total + 1}\n0000000000 65535 f \n`);
+    for (let k = 1; k <= total; k++) push(`${String(offsets[k]).padStart(10, "0")} 00000 n \n`);
+    push(`trailer\n<< /Size ${total + 1} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF`);
+    return new Blob(chunks, { type: "application/pdf" });
+  }
+
+  function downloadReport() {
+    const data = readForm();
+    if (!validate(data).ready) { refresh(); return; }
+
+    const missing = missingDimensions();
+    if (missing.length) {
+      allAnswerInputs().forEach((t) => t.classList.toggle("missing", !t.value.trim()));
+      const ok = confirm(
+        `Faltan respuestas del cuestionario en: ${missing.map((d) => d.name).join(", ")}.\n\n` +
+        "¿Quieres descargar el informe igualmente?"
+      );
+      if (!ok) {
+        setStatus("Completa el cuestionario para incluir todas las respuestas en el informe.", "err");
+        const first = allAnswerInputs().find((t) => !t.value.trim());
+        first.scrollIntoView({ behavior: "smooth", block: "center" });
+        first.focus({ preventScroll: true });
+        return;
+      }
+    }
+
+    const clean = sanitized(data);
+    const PW = 595.28, PH = 841.89, M = 30;
+    const pdfPages = [];
+
+    const chart = document.createElement("canvas");
+    render(chart, clean, EXPORT_SCALE);
+    const cw = PW - M * 2, ch = cw * (H / W);
+    pdfPages.push({ jpeg: canvasToJpeg(chart), w: chart.width, h: chart.height, place: [M, (PH - ch) / 2, cw, ch] });
+
+    const { s, pages } = paginateAnswers(clean);
+    pages.forEach((blocks, i) => {
+      const pg = document.createElement("canvas");
+      renderAnswersPage(pg, clean, blocks, s, i + 2, pages.length + 1, EXPORT_SCALE);
+      pdfPages.push({ jpeg: canvasToJpeg(pg), w: pg.width, h: pg.height, place: [0, 0, PW, PH] });
+    });
+
+    const blob = buildPdf(pdfPages, `Athlete Performance Radar - ${clean.name.trim()}`);
+    saveBlob(blob, `performance-radar-informe-${slugify(clean.name)}-${clean.date}.pdf`);
+    setStatus(missing.length ? "Informe descargado (con preguntas sin responder)." : "Informe descargado.", "ok");
   }
 
   // ---------- Tooltip de dimensiones ----------
@@ -823,6 +1109,7 @@
 
   function init() {
     buildForm();
+    buildQuestions();
     bindTooltips();
     let draft = null;
     try { draft = JSON.parse(localStorage.getItem(STORAGE_DRAFT)); } catch { /* ignore */ }
@@ -834,8 +1121,9 @@
     $("saveBtn").addEventListener("click", saveProfile);
     $("deleteBtn").addEventListener("click", deleteProfile);
     downloadBtn.addEventListener("click", download);
+    reportBtn.addEventListener("click", downloadReport);
     $("exampleBtn").addEventListener("click", () => {
-      writeForm({ ...EXAMPLE, name: nameInput.value });
+      writeForm({ ...EXAMPLE, name: nameInput.value, answers: readForm().answers });
       onChange();
     });
     $("clearBtn").addEventListener("click", () => {
